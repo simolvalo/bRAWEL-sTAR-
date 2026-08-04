@@ -15,7 +15,6 @@ CARRY_CATEGORY_ID = 1534328768611618846
 MY_RIB_INFO = "Bank: CIH BANK\nRIB: 123456789012345678901234\nName: YOUR NAME HERE"
 MY_PAYPAL_INFO = "PayPal Email: paypal.me/yourusername"
 
-# Image Banner URLs (Dair fihom tsawer l-prices dialek)
 IMAGE_PRICES_1 = "https://cdn.discordapp.com/attachments/123/456/image1.png"
 
 # Prices Matrix for Ranks
@@ -55,13 +54,13 @@ class ConfirmCloseView(View):
     def __init__(self):
         super().__init__(timeout=60)
 
-    @discord.ui.button(label="Yes, Close", style=ButtonStyle.danger, emoji="✅")
+    @discord.ui.button(label="Yes, Close", style=ButtonStyle.danger, emoji="✅", custom_id="confirm_close_btn")
     async def confirm(self, interaction: discord.Interaction, button: Button):
         await interaction.response.send_message("🔒 Closing channel in 5 seconds...")
         await discord.utils.sleep_until(discord.utils.utcnow() + discord.utils.datetime.timedelta(seconds=5))
         await interaction.channel.delete()
 
-    @discord.ui.button(label="Cancel", style=ButtonStyle.secondary, emoji="❌")
+    @discord.ui.button(label="Cancel", style=ButtonStyle.secondary, emoji="❌", custom_id="cancel_close_btn")
     async def cancel(self, interaction: discord.Interaction, button: Button):
         await interaction.response.send_message("Closing cancelled.", ephemeral=True)
         await interaction.message.delete()
@@ -86,21 +85,22 @@ class CloseReasonModal(Modal):
 
 # Ticket View Controls
 class TicketControlsView(View):
-    def __init__(self, payment_method: str, payment_enabled: bool = False):
+    def __init__(self, payment_method: str = "Bank Transfer / RIB", payment_enabled: bool = False):
         super().__init__(timeout=None)
         self.payment_method = payment_method
 
-        self.close_btn = Button(label="Close", style=ButtonStyle.danger, emoji="🔒")
+        self.close_btn = Button(label="Close", style=ButtonStyle.danger, emoji="🔒", custom_id="ticket_close_btn")
         self.close_btn.callback = self.close_callback
 
-        self.close_reason_btn = Button(label="Close With Reason", style=ButtonStyle.secondary, emoji="📝")
+        self.close_reason_btn = Button(label="Close With Reason", style=ButtonStyle.secondary, emoji="📝", custom_id="ticket_close_reason_btn")
         self.close_reason_btn.callback = self.close_reason_callback
 
         self.sent_payment_btn = Button(
             label="I Sent Payment",
             style=ButtonStyle.success,
             emoji="💳",
-            disabled=not payment_enabled
+            disabled=not payment_enabled,
+            custom_id="ticket_sent_payment_btn"
         )
         self.sent_payment_btn.callback = self.sent_payment_callback
 
@@ -153,15 +153,13 @@ class OrderFlowView(View):
     async def current_callback(self, interaction: discord.Interaction):
         self.current_rank = self.current_select.values[0]
         
-        # Filter desired ranks to be strictly higher
         start_idx = RANKS_ORDER.index(self.current_rank)
         valid_desired = RANKS_ORDER[start_idx + 1:]
 
-        # Create Desired Rank Dropdown
         self.clear_items()
         self.desired_select = Select(
             placeholder=f"Current: {self.current_rank} ➔ Select Desired Rank...",
-            options=[discord.SelectOption(label=rank) for rank in valid_desired[:25]] # Max 25 options
+            options=[discord.SelectOption(label=rank) for rank in valid_desired[:25]]
         )
         self.desired_select.callback = self.desired_callback
         self.add_item(self.desired_select)
@@ -174,7 +172,6 @@ class OrderFlowView(View):
     async def desired_callback(self, interaction: discord.Interaction):
         self.desired_rank = self.desired_select.values[0]
 
-        # Create Payment Method Dropdown
         self.clear_items()
         self.payment_select = Select(
             placeholder="Select Payment Method...",
@@ -249,11 +246,11 @@ class ServiceTypeView(View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    @discord.ui.button(label="Get B00sted", style=ButtonStyle.success, emoji="🚀")
+    @discord.ui.button(label="Get B00sted", style=ButtonStyle.success, emoji="🚀", custom_id="srv_boosted_btn")
     async def boosted_button(self, interaction: discord.Interaction, button: Button):
         await interaction.response.send_message("Please select your order parameters:", view=OrderFlowView("Boost"), ephemeral=True)
 
-    @discord.ui.button(label="Get Carried (2x Price)", style=ButtonStyle.blurple, emoji="🤝")
+    @discord.ui.button(label="Get Carried (2x Price)", style=ButtonStyle.blurple, emoji="🤝", custom_id="srv_carried_btn")
     async def carried_button(self, interaction: discord.Interaction, button: Button):
         await interaction.response.send_message("Please select your order parameters:", view=OrderFlowView("Carry"), ephemeral=True)
 
@@ -280,7 +277,6 @@ async def setup_panel(interaction: discord.Interaction):
         description="**What We Offer**\n• Climb the ranks with professional boosting service\n• Fast, secure, and reliable rank progression\n• Experienced boosters with proven track records",
         color=0x8A2BE2
     )
-    # Adding the Price Chart image inside the main panel
     embed.set_image(url=IMAGE_PRICES_1)
 
     await interaction.channel.send(embed=embed, view=MainTicketView())
@@ -288,11 +284,16 @@ async def setup_panel(interaction: discord.Interaction):
 
 @bot.event
 async def on_ready():
-    bot.ticket_data = {}
+    bot.ticket_data = getattr(bot, 'ticket_data', {})
+    
+    # Register persistent views so buttons work even after restart
+    bot.add_view(MainTicketView())
+    bot.add_view(ServiceTypeView())
+    bot.add_view(TicketControlsView())
+    
     await bot.tree.sync()
     print(f"Bot logged in as {bot.user}")
 
-# Event listener to enable 'I Sent Payment' button when user types 'done'
 @bot.event
 async def on_message(message: discord.Message):
     if message.author.bot:
