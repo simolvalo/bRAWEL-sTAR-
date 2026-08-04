@@ -8,8 +8,8 @@ from discord.ui import View, Button, Select, Modal, TextInput
 TOKEN = os.getenv("DISCORD_TOKEN")
 
 # Badel hna b Category IDs dialek f Discord
-BOOST_CATEGORY_ID = 123456789012345678  # Category ID for Boost Orders
-CARRY_CATEGORY_ID = 987654321098765432  # Category ID for Carry Orders (2x)
+BOOST_CATEGORY_ID = 1534328814707151151  # Category ID for Boost Orders
+CARRY_CATEGORY_ID = 1534328768611618846  # Category ID for Carry Orders (2x)
 
 # Prices Matrix for Ranks
 RANK_PRICES = {
